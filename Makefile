@@ -145,13 +145,14 @@ $(OPENSSL)/libssl.a: $(OPENSSL)
 	cd $(OPENSSL) && ./Configure linux-generic32 no-shared -DL_ENDIAN
 	make -C $(OPENSSL) PROCESSOR=ARM
 
-$(OUTDIR)/cert_provisioning: $(MOCKS) $(CERT_PROVISIONING_OBJS)
+$(OUTDIR):
 	mkdir -p $(OUTDIR)
+
+$(OUTDIR)/cert_provisioning: $(OUTDIR) $(MOCKS) $(CERT_PROVISIONING_OBJS)
 	$(CXX) $(CFLAGS) $(LIBPATH) \
 		-o $(OUTDIR)/cert_provisioning $(CERT_PROVISIONING_OBJS) $(CERT_PROVISIONING_LIBS)
 
-$(OUTDIR)/gtv_ca_sign: $(MOCKS) $(GTV_CA_SIGN_OBJS)
-	mkdir -p $(OUTDIR)
+$(OUTDIR)/gtv_ca_sign: $(OUTDIR) $(MOCKS) $(GTV_CA_SIGN_OBJS)
 	$(CXX) $(CFLAGS) $(LIBPATH) \
 		-o $(OUTDIR)/gtv_ca_sign $(GTV_CA_SIGN_OBJS) $(GTV_CA_SIGN_LIBS)
 
@@ -167,7 +168,7 @@ $(OUTDIR)/gtv_ca_sign: $(MOCKS) $(GTV_CA_SIGN_OBJS)
 tests:
 	make -C tests
 
-$(MOCKS):
+$(MOCKS): $(OUTDIR)
 	make -C $(MOCKS)
 	cp $(MOCKS)/*.so $(OUTDIR)
 
