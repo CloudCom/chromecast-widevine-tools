@@ -79,6 +79,7 @@ echo -e "Using OTA /system folder at: $STAGING_SYSTEM\n\n"
 STAGING_INITRAMFS=$STAGING/`cat $STAGING/current`-initramfs
 echo -e "Using OTA initramfs at: $STAGING_INITRAMFS\n\n"
 
+mkdir -p $LXC_ROOTFS/lib
 cp -r $STAGING_INITRAMFS/lib/* $LXC_ROOTFS/lib/
 
 umount $LXC_ROOTFS/system
