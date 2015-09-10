@@ -8,10 +8,10 @@ LXC_ROOTFS="$CONTAINERPATH/rootfs"
 
 test -d $CONTAINERPATH || lxc-create -t ubuntu -n $LXCNAME -- -a armhf
 
-echo "Container: $CONTAINERPATH";
+echo -e "Container: $CONTAINERPATH\n\n";
 
 if [ "`lxc-ls | grep $LXCNAME`" != "" ]; then
-  echo "Stopping container temporarily..."
+  echo -e "Stopping container temporarily...\n\n"
   lxc-stop -n $LXCNAME
 fi
 
@@ -31,20 +31,20 @@ EOF
 )
 
 if [ ! -d $STAGING ]; then
-  echo "Building test staging area...";
+  echo -e "Building test staging area...\n\n";
   mkdir -p $STAGING
   chmod 0777 $STAGING
 fi
 
 if [ ! -e $STAGING/current ]; then
-  echo "Downloading latest chromecast OTA...";
+  echo -e "Downloading latest chromecast OTA...\n\n";
 
   UPD_XML=`echo "$UPDATE_DATA" | curl -s $UPDATE_URL -d @- -H 'Content-type: text/xml'`
 
   UPD_DISPLAYVERSION=`echo "$UPD_XML" | xmllint --xpath 'string(//@DisplayVersion)' -`
   UPD_CODEBASE=`echo "$UPD_XML" | xmllint --xpath 'string(//@codebase)' -`
   UPD_SIZE=`echo "$UPD_XML" | xmllint --xpath 'string(//@size)' -`
-  echo "Download version $UPD_DISPLAYVERSION from $UPD_CODEBASE"
+  echo -e "Download version $UPD_DISPLAYVERSION from $UPD_CODEBASE\n\n"
 
   UPD_CODEBASE_OUT=$STAGING/`basename $UPD_CODEBASE`
 
@@ -63,27 +63,27 @@ if [ ! -e $STAGING/current ]; then
 fi
 
 if [ ! -e $STAGING/current ]; then
-  echo "Something went wrong, cannot find local OTA filesystem."
+  echo -e "Something went wrong, cannot find local OTA filesystem.\n\n"
   exit 1;
 fi
 
 KEY=$STAGING/lxc-key
 if [ ! -e $KEY ]; then
-  echo "Generating RSA key for container ..."
+  echo -e "Generating RSA key for container ...\n\n"
   ssh-keygen -t rsa -f $KEY -N ""
   chmod 0774 $KEY
 fi
 
 STAGING_SYSTEM=$STAGING/`cat $STAGING/current`-system
-echo "Using OTA /system folder at: $STAGING_SYSTEM"
+echo -e "Using OTA /system folder at: $STAGING_SYSTEM\n\n"
 STAGING_INITRAMFS=$STAGING/`cat $STAGING/current`-initramfs
-echo "Using OTA initramfs at: $STAGING_INITRAMFS"
+echo -e "Using OTA initramfs at: $STAGING_INITRAMFS\n\n"
 
 cp -r $STAGING_INITRAMFS/lib/* $LXC_ROOTFS/lib/
 
 umount $LXC_ROOTFS/system
 if [ "`mount | grep $STAGING_SYSTEM`" = "" ]; then
-  echo "Binding $STAGING_SYSTEM to $LXC_ROOTFS/system"
+  echo -e "Binding $STAGING_SYSTEM to $LXC_ROOTFS/system\n\n"
 
   mkdir -p $LXC_ROOTFS/system
   mount -o bind $STAGING_SYSTEM $LXC_ROOTFS/system
@@ -92,7 +92,7 @@ fi
 umount $LXC_ROOTFS/root/tools
 OUTDIR="`pwd`/bin"
 if [ "`mount | grep $OUTDIR`" = "" ]; then
-  echo "Binding $OUTDIR to $LXC_ROOTFS/root/tools"
+  echo -e "Binding $OUTDIR to $LXC_ROOTFS/root/tools\n\n"
 
   mkdir -p $LXC_ROOTFS/root/tools
   mount -o bind $OUTDIR $LXC_ROOTFS/root/tools
@@ -108,12 +108,12 @@ if [ "`cat $LXC_ROOTFS/root/.bashrc | grep LD_LIBRARY_PATH`" = "" ]; then
   echo "export LD_LIBRARY_PATH=/root/tools:$LD_LIBRARY_PATH" >> $LXC_ROOTFS/root/.bashrc
 fi
 
-echo "Booting container ..."
+echo -e "Booting container ... $LXCNAME\n\n"
 lxc-start -n $LXCNAME -d
 lxc-wait -n $LXCNAME --state=RUNNING -t 30
 
 if [ "`lxc-ls $LXCNAME --fancy | tail -n1 | awk '{ print $2 }'`" != "RUNNING" ]; then
-  echo "Container failed to boot."
+  echo -e "Container failed to boot.\n\n"
   exit 1;
 fi
 
