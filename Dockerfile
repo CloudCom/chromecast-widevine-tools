@@ -1,5 +1,6 @@
 FROM buildpack-deps:jessie-scm
 
+# TODO should switch to start-server.sh
 CMD	bash
 
 RUN apt-get update
@@ -9,3 +10,6 @@ ADD	.	/widevine
 WORKDIR	/widevine
 
 RUN make
+
+# TODO uncomment after script is complete
+# RUN tools/build-server.sh
