@@ -1,6 +1,10 @@
 #!/bin/bash
 
 # download whatever code is needed
+yellow="\033[1;33m"
+green="\033[0;32m"
+red="\033[0;31m"
+NC="\033[0m"
 
 STAGING="$(pwd)/staging"
 
@@ -18,36 +22,58 @@ EOF
 )
 
 if [ ! -d $STAGING ]; then
-  echo -e "Building test staging area...\n\n";
+  printf "${yellow}Building test staging area...${NC}\n\n";
   mkdir -p $STAGING
   chmod 0777 $STAGING
+  printf 
 fi
 
 if [ ! -e $STAGING/current ]; then
-  echo -e "Downloading latest chromecast OTA...\n\n";
+  printf "${yellow}Fetching latest chromecast OTA version.${NC}\n";
 
+  # fetch the xml file that contains information on the latest OTA
   UPD_XML=$(echo "$UPDATE_DATA" | curl -s $UPDATE_URL -d @- -H 'Content-type: text/xml')
-  echo -e "$UPD_XML\n\n"
 
+  # extract version and where the zip exist 
   UPD_DISPLAYVERSION=$(echo "$UPD_XML" | xmllint --xpath 'string(//@DisplayVersion)' -)
   UPD_CODEBASE=$(echo "$UPD_XML" | xmllint --xpath 'string(//@codebase)' -)
-  UPD_SIZE=$(echo "$UPD_XML" | xmllint --xpath 'string(//@size)' -)
-  echo -e "Download version $UPD_DISPLAYVERSION from $UPD_CODEBASE\n\n"
+  printf "${green}Version ${UPD_DISPLAYVERSION} avaliable at ${UPD_CODEBASE}.${NC}\n\n";
 
   UPD_CODEBASE_OUT=$STAGING/$(basename $UPD_CODEBASE)
-
   mkdir -p $STAGING
-  # wget --continue $UPD_CODEBASE -O $UPD_CODEBASE_OUT
 
-  # unzip $UPD_CODEBASE_OUT -d $STAGING/$UPD_DISPLAYVERSION
-  # unsquashfs -d $STAGING/$UPD_DISPLAYVERSION-system $STAGING/$UPD_DISPLAYVERSION/system.img
+  printf "${yellow}Downloading into ${UPD_CODEBASE_OUT} now...${NC}\n"
+  curl -# -L $UPD_CODEBASE -o $UPD_CODEBASE_OUT
 
-  # CPIO_OFFSET=`binwalk $STAGING/$UPD_DISPLAYVERSION/boot.img | grep 'gzip compressed data' | cut -d' ' -f1`
-  # dd if=$STAGING/$UPD_DISPLAYVERSION/boot.img bs=$CPIO_OFFSET skip=1 of=$STAGING/$UPD_DISPLAYVERSION/boot.cpio.gz
-  # mkdir -p $STAGING/$UPD_DISPLAYVERSION-initramfs
-  # cd $STAGING/$UPD_DISPLAYVERSION-initramfs && pax -rvzf $STAGING/$UPD_DISPLAYVERSION/boot.cpio.gz
+  unzip $UPD_CODEBASE_OUT -d $STAGING/version
+  
+  # extract the entire filesystem image into directory
+  unsquashfs -d $STAGING/system $STAGING/version/system.img
 
-  # echo $UPD_DISPLAYVERSION > $STAGING/current
+  # looking for any gzip file in the image and extracts it.
+  CPIO_OFFSET=`binwalk $STAGING/version/boot.img | grep 'gzip compressed data' | cut -d' ' -f1`
+
+  dd if=$STAGING/version/boot.img bs=$CPIO_OFFSET skip=1 of=$STAGING/version/boot.cpio.gz
+  mkdir -p $STAGING/initramfs
+  cd $STAGING/initramfs && pax -rvzf $STAGING/version/boot.cpio.gz
+
+  echo $UPD_DISPLAYVERSION > $STAGING/current
+  rm -rf $UPD_CODEBASE_OUT
 fi
 
+if [ ! -e $STAGING/current ]; then
+  printf "${red}Something went wrong, cannot find local OTA filesystem.${NC}"
+  exit 1;
+fi
+
+# TODO: validate that we don't need this
+
+# KEY=$STAGING/lxc-key
+# if [ ! -e $KEY ]; then
+#   echo -e "Generating RSA key for container ...\n\n"
+#   ssh-keygen -t rsa -f $KEY -N ""
+#   chmod 0774 $KEY
+# fi
+
 # build the code
+
